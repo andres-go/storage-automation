@@ -15,14 +15,14 @@ def find_dataman_port():
 
     for port in ports:
         if "DataMan" in port.description:
-            # print(f"Found DataMan device at {port.device}")
+            print(f"Found DataMan device at {port.device}")
 
             return port.device
     print("ERROR : DataMan device not found.")
     return None
 
 # 3. Leer barcode
-def read_barcode():
+def scan_barcode():
 
     # Asignar puerto encontrado con find_dataman_port()
     port = find_dataman_port()
@@ -67,4 +67,4 @@ def read_barcode():
 
 # Ejecutar código 
 if __name__ == '__main__':
-    read_barcode()
+    scan_barcode()

@@ -19,17 +19,17 @@ supabase = create_client(url, key)
 #     .eq("id", 4)
 #     .execute()
 # )
-barcode = read_barcode()
-if barcode and not barcode.startswith("ERROR"):
-    # Insertar en Supabase
-    response = (
-        supabase.table("registro")
-        .insert({"empleado": "PEDRO", "barcode": barcode})
-        .execute()
-    )
-    print("Insert response:", response)
-else:
-    print("No se pudo obtener un código de barras válido.")
+# barcode = read_barcode()
+# if barcode and not barcode.startswith("ERROR"):
+#     # Insertar en Supabase
+#     response = (
+#         supabase.table("registro")
+#         .insert({"empleado": "PEDRO", "barcode": barcode})
+#         .execute()
+#     )
+#     print("Insert response:", response)
+# else:
+#     print("No se pudo obtener un código de barras válido.")
 
 
 
