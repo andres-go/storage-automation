@@ -2,7 +2,7 @@ import sys
 import os
 from datetime import datetime
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QWidget, QHBoxLayout
+    QApplication, QMainWindow, QVBoxLayout, QPushButton, QLabel, QWidget, QHBoxLayout, QLineEdit
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QTimer
@@ -19,6 +19,8 @@ class ScanApp(QMainWindow):
         self.rfid_buffer = ""
         self.mode = None  # 'prestamo' or 'devolucion'
         self.rfid_set = False  # True si ya se escaneó RFID en la sesión
+        self.motivo = ""
+        self.empresa = ""
 
         # Main widget and layout
         self.central_widget = QWidget()
@@ -76,7 +78,40 @@ class ScanApp(QMainWindow):
 
         self.layout.addStretch()
 
-        # Scan, Reset, Devolución, and Regresar buttons
+        # Botones principales (solo se crean una vez)
+        self.prestamo_button = QPushButton("Préstamo", self)
+        self.prestamo_button.setFixedSize(180, 60)
+        self.prestamo_button.setStyleSheet(
+            "font-size: 18px;"
+            "font-weight: bold;"
+            "padding: 5px;"
+            "background-color: #2196F3;"
+            "color: white;"
+            "border-radius: 8px;"
+        )
+        self.prestamo_button.clicked.connect(self.start_prestamo)
+
+        self.devolucion_button = QPushButton("Devolución", self)
+        self.devolucion_button.setFixedSize(180, 60)
+        self.devolucion_button.setStyleSheet(
+            "font-size: 18px;"
+            "font-weight: bold;"
+            "padding: 5px;"
+            "background-color: #4CAF50;"
+            "color: white;"
+            "border-radius: 8px;"
+        )
+        self.devolucion_button.clicked.connect(self.start_devolucion)
+
+        self.menu_buttons_layout = QHBoxLayout()
+        self.menu_buttons_layout.addStretch()
+        self.menu_buttons_layout.addWidget(self.prestamo_button)
+        self.menu_buttons_layout.addSpacing(20)
+        self.menu_buttons_layout.addWidget(self.devolucion_button)
+        self.menu_buttons_layout.addStretch()
+        self.content_layout.addLayout(self.menu_buttons_layout)
+
+        # Scan, Salir, Regresar
         self.scan_button = QPushButton("Scan", self)
         self.scan_button.setFixedSize(180, 60)
         self.scan_button.setStyleSheet(
@@ -113,18 +148,6 @@ class ScanApp(QMainWindow):
         )
         self.regresar_button.clicked.connect(self.show_main_menu)
 
-        self.devolucion_button = QPushButton("Devolución", self)
-        self.devolucion_button.setFixedSize(180, 60)
-        self.devolucion_button.setStyleSheet(
-            "font-size: 18px;"
-            "font-weight: bold;"
-            "padding: 5px;"
-            "background-color: #4CAF50;"
-            "color: white;"
-            "border-radius: 8px;"
-        )
-        self.devolucion_button.clicked.connect(self.start_devolucion)
-
         self.button_layout = QHBoxLayout()
         self.button_layout.addStretch()
         self.button_layout.addWidget(self.scan_button)
@@ -136,9 +159,17 @@ class ScanApp(QMainWindow):
         self.layout.addLayout(self.button_layout)
         self.layout.addSpacing(30)
 
-        self.start_datetime_timer()
+        # Caja de texto para empresa (solo una vez, nunca se destruye)
+        self.empresa_input = QLineEdit(self)
+        self.empresa_input.setPlaceholderText("¿Cuál empresa?")
+        self.empresa_input.setStyleSheet(
+            "font-size: 18px;"
+            "padding: 10px;"
+        )
+        self.empresa_input.setVisible(False)
+        self.content_layout.addWidget(self.empresa_input)
 
-        # Start in main menu
+        self.start_datetime_timer()
         self.show_main_menu()
 
     def update_datetime(self):
@@ -177,12 +208,13 @@ class ScanApp(QMainWindow):
 
     def show_main_menu(self):
         self.mode = None
-        # Usar clearEmpleado si no hay RFID registrado
+        self.motivo = ""
+        self.empresa = ""
         if not self.rfid_set:
             self.employee.clearEmpleado()
         self.rfid_buffer = ""
         self.clear_layout(self.content_layout)
-        # Mostrar el nombre si ya hay uno registrado
+        self.empresa_input.setVisible(False)
         if self.rfid_set and self.employee.getEmployeeName():
             self.user_name_label.setText(f"User: {self.employee.getEmployeeName()}")
         else:
@@ -190,8 +222,8 @@ class ScanApp(QMainWindow):
         self.scan_button.setVisible(False)
         self.exit_button.setVisible(False)
         self.regresar_button.setVisible(False)
+        self.prestamo_button.setVisible(True)
         self.devolucion_button.setVisible(True)
-        # Main menu label
         menu_label = QLabel("Selecciona una opción", self)
         menu_label.setAlignment(Qt.AlignCenter)
         menu_label.setStyleSheet(
@@ -199,25 +231,6 @@ class ScanApp(QMainWindow):
             "font-weight: bold;"
         )
         self.content_layout.addWidget(menu_label)
-        # Botón para préstamo (default)
-        self.prestamo_button = QPushButton("Préstamo", self)
-        self.prestamo_button.setFixedSize(180, 60)
-        self.prestamo_button.setStyleSheet(
-            "font-size: 18px;"
-            "font-weight: bold;"
-            "padding: 5px;"
-            "background-color: #2196F3;"
-            "color: white;"
-            "border-radius: 8px;"
-        )
-        self.prestamo_button.clicked.connect(self.start_prestamo)
-        prestamo_layout = QHBoxLayout()
-        prestamo_layout.addStretch()
-        prestamo_layout.addWidget(self.prestamo_button)
-        prestamo_layout.addSpacing(20)
-        prestamo_layout.addWidget(self.devolucion_button)
-        prestamo_layout.addStretch()
-        self.content_layout.addLayout(prestamo_layout)
         self.image_label.setText("")
         self.show_instruction_image()
         self.central_widget.setFocus()
@@ -226,7 +239,7 @@ class ScanApp(QMainWindow):
     def start_prestamo(self):
         self.mode = "prestamo"
         if self.rfid_set and self.employee.getEmployeeName():
-            self.show_main_screen()
+            self.show_motivo_menu()
         else:
             self.show_login_screen("Escanear RFID para préstamo")
 
@@ -239,10 +252,12 @@ class ScanApp(QMainWindow):
 
     def show_login_screen(self, instruction="Escanear RFID"):
         self.clear_layout(self.content_layout)
+        self.empresa_input.setVisible(False)
         self.user_name_label.setText("")
         self.scan_button.setVisible(False)
         self.exit_button.setVisible(True)
         self.regresar_button.setVisible(True)
+        self.prestamo_button.setVisible(False)
         self.devolucion_button.setVisible(False)
         # Show login instruction
         self.login_label = QLabel(instruction, self)
@@ -257,15 +272,99 @@ class ScanApp(QMainWindow):
         self.central_widget.setFocus()
         self.installEventFilter(self)
 
+    def show_motivo_menu(self):
+        self.clear_layout(self.content_layout)
+        self.empresa_input.setVisible(False)
+        self.prestamo_button.setVisible(False)
+        self.devolucion_button.setVisible(False)
+        self.scan_button.setVisible(False)
+        self.exit_button.setVisible(True)
+        self.regresar_button.setVisible(True)
+        self.motivo = ""
+        self.empresa = ""
+        motivo_label = QLabel("Selecciona el motivo", self)
+        motivo_label.setAlignment(Qt.AlignCenter)
+        motivo_label.setStyleSheet(
+            "font-size: 25px;"
+            "font-weight: bold;"
+        )
+        self.content_layout.addWidget(motivo_label)
+
+        motivos = [
+            ("Préstamo cliente", self.motivo_prestamo_cliente),
+            ("Visita cliente", self.motivo_visita_cliente),
+            ("Demo Oficina", self.motivo_demo_oficina),
+            ("Cambio Oficina", self.motivo_cambio_oficina)
+        ]
+        for texto, slot in motivos:
+            btn = QPushButton(texto, self)
+            btn.setFixedHeight(80)
+            btn.setStyleSheet(
+                "font-size: 22px;"
+                "margin: 15px;"
+                "background-color: #2196F3;"
+                "color: white;"
+                "border-radius: 12px;"
+            )
+            btn.clicked.connect(slot)
+            self.content_layout.addWidget(btn)
+
+    def motivo_prestamo_cliente(self):
+        self.motivo = "Préstamo cliente"
+        self.empresa_input.setText("")
+        self.empresa_input.setVisible(True)
+        self.empresa_input.setFocus()
+        try:
+            self.empresa_input.returnPressed.disconnect()
+        except TypeError:
+            pass
+        self.empresa_input.returnPressed.connect(self.confirmar_motivo_empresa)
+
+    def motivo_visita_cliente(self):
+        self.motivo = "Visita cliente"
+        self.empresa_input.setText("")
+        self.empresa_input.setVisible(True)
+        self.empresa_input.setFocus()
+        try:
+            self.empresa_input.returnPressed.disconnect()
+        except TypeError:
+            pass
+        self.empresa_input.returnPressed.connect(self.confirmar_motivo_empresa)
+
+    def motivo_demo_oficina(self):
+        self.motivo = "Demo Oficina"
+        self.empresa = ""
+        print(f"Motivo seleccionado: {self.motivo}")
+        self.show_main_screen()
+
+    def motivo_cambio_oficina(self):
+        self.motivo = "Cambio Oficina"
+        self.empresa = ""
+        print(f"Motivo seleccionado: {self.motivo}")
+        self.show_main_screen()
+
+    def confirmar_motivo_empresa(self):
+        self.empresa = self.empresa_input.text().strip()
+        if self.empresa:
+            print(f"Motivo seleccionado: {self.motivo} - Empresa: {self.empresa}")
+            self.empresa_input.setVisible(False)
+            self.show_main_screen()
+        else:
+            self.empresa_input.setFocus()
+
     def show_main_screen(self):
         self.clear_layout(self.content_layout)
+        self.empresa_input.setVisible(False)
         if self.mode == "prestamo":
-            self.user_name_label.setText(f"User: {self.employee.getEmployeeName()}")
+            motivo_str = f" | Motivo: {self.motivo}"
+            if self.empresa:
+                motivo_str += f" ({self.empresa})"
+            self.user_name_label.setText(f"User: {self.employee.getEmployeeName()}{motivo_str}")
             main_label = "Escanear QR para préstamo"
+            print(f"Motivo final: {self.motivo} - Empresa: {self.empresa}")
         else:
-            self.user_name_label.setText(f"User: {self.employee.getEmployeeName()}")
+            self.user_name_label.setText(f"User: {self.employee.getEmployeeName()} (Devolución)")
             main_label = "Escanear QR para devolución"
-        # Main scan label
         self.scanned_data_label = QLabel(main_label, self)
         self.scanned_data_label.setAlignment(Qt.AlignCenter)
         self.scanned_data_label.setStyleSheet(
@@ -273,7 +372,6 @@ class ScanApp(QMainWindow):
             "font-weight: bold;"
         )
         self.content_layout.addWidget(self.scanned_data_label)
-        # Secondary label
         self.scanned_data_secondary_label = QLabel(self)
         self.scanned_data_secondary_label.setAlignment(Qt.AlignCenter)
         self.scanned_data_secondary_label.setStyleSheet(
@@ -285,17 +383,17 @@ class ScanApp(QMainWindow):
         self.scan_button.setVisible(True)
         self.exit_button.setVisible(True)
         self.regresar_button.setVisible(True)
+        self.prestamo_button.setVisible(False)
         self.devolucion_button.setVisible(False)
         self.removeEventFilter(self)
 
     def exit_to_main_menu(self):
-        # Salir: regresa a menú principal y reinicia sesión
         self.rfid_set = False
         self.employee.clearEmpleado()
         self.show_main_menu()
 
     def eventFilter(self, obj, event):
-        # 1. En Main menu, si escanean RFID, va directo a préstamo y el dato prevalece
+        # En Main menu, si escanean RFID, va directo a motivo y luego préstamo
         if self.mode is None:
             if event.type() == event.KeyPress:
                 key = event.text()
@@ -303,18 +401,17 @@ class ScanApp(QMainWindow):
                     self.rfid_buffer += key
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     rfid = self.rfid_buffer.strip()
-                    # Solo permite escanear un RFID si aún no hay uno registrado
                     if rfid and not self.rfid_set and not self.employee.getIDEmpleado():
                         self.employee.setEmpleadoByRFID(rfid)
                         self.rfid_set = True
                         self.rfid_buffer = ""
                         self.mode = "prestamo"
-                        self.show_main_screen()
-                    # Si ya hay RFID registrado, ignora el nuevo escaneo
+                        self.prestamo_button.setVisible(False)
+                        self.devolucion_button.setVisible(False)
+                        self.show_motivo_menu()
                     self.rfid_buffer = ""
                     return True
             return super().eventFilter(obj, event)
-        # 2. Si ya se escaneó RFID, no volver a pedirlo al cambiar de modo
         elif self.mode in ("prestamo", "devolucion") and not self.rfid_set:
             if event.type() == event.KeyPress:
                 key = event.text()
@@ -326,17 +423,25 @@ class ScanApp(QMainWindow):
                         self.employee.setEmpleadoByRFID(rfid)
                         self.rfid_set = True
                         self.rfid_buffer = ""
-                        self.show_main_screen()
+                        if self.mode == "prestamo":
+                            self.show_motivo_menu()
+                        else:
+                            self.show_main_screen()
                     return True
             return super().eventFilter(obj, event)
         else:
             return super().eventFilter(obj, event)
 
     def clear_layout(self, layout):
-        while layout.count():
-            child = layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+        # No borres self.empresa_input ni los botones principales
+        for i in reversed(range(layout.count())):
+            item = layout.itemAt(i)
+            widget = item.widget()
+            if widget is not None and widget not in [self.empresa_input, self.prestamo_button, self.devolucion_button]:
+                widget.setParent(None)
+                widget.deleteLater()
+            elif item.layout() is not None and item.layout() is not self.menu_buttons_layout:
+                self.clear_layout(item.layout())
 
     def perform_scan(self):
         try:
