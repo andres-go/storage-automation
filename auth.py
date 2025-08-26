@@ -31,3 +31,4 @@ except Exception as e:
 
 supabase.auth.sign_out()
 print(session)
+
