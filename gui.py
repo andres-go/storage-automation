@@ -8,6 +8,21 @@ from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QTimer
 from scan import read_barcode
 from rfid import Employee
+from monday_con import process_checkout
+
+# IDs y mapeos (ajusta según tus columnas reales)
+INVENTORY_BOARD_ID = "9233233911"
+SMALL_BOARD_ID = "9900506946"
+UID_COLUMN_ID = "text_mkrabj2m"
+SERIAL_COLUMN_ID = "text_mkrabj2m"
+PART_COLUMN_ID = "text_mkra6xgc"
+STATUS_COLUMN_ID = "color_mkrdamvf"
+SMALL_BOARD_COLUMN_MAPPING = {
+    'serial': 'serial_column_id_en_board_pequeño',
+    'part': 'part_column_id_en_board_pequeño',
+    'person': 'person_column_id_en_board_pequeño',
+    'motive': 'motive_column_id_en_board_pequeño'
+}
 
 class ScanApp(QMainWindow):
     def __init__(self):
@@ -446,16 +461,41 @@ class ScanApp(QMainWindow):
     def perform_scan(self):
         try:
             scanned_data = read_barcode()
-            if scanned_data and "ERROR" not in scanned_data:
-                self.scanned_data_label.setText(f"{scanned_data}")
-                self.scanned_data_secondary_label.setText(f"{scanned_data}")
-                self.show_status_image("success")
-                current_datetime = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
-                print(f"{self.employee.getEmployeeName()} - {scanned_data} - {current_datetime} - {self.mode}")
+            # Si no se escanea nada, usa el valor de test
+            if not scanned_data or "ERROR" in scanned_data:
+                scanned_data = "121800074"  # UID de prueba como en monday_con.py
+                self.scanned_data_label.setText("Usando UID de prueba")
             else:
-                self.scanned_data_label.setText("No barcode detected.")
-                self.scanned_data_secondary_label.setText("")
-                self.show_status_image("failure")
+                self.scanned_data_label.setText(f"{scanned_data}")
+            self.scanned_data_secondary_label.setText(f"{scanned_data}")
+            self.show_status_image("success")
+            current_datetime = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
+            print(f"{self.employee.getEmployeeName()} - {scanned_data} - {current_datetime} - {self.mode}")
+
+            # --- INTEGRACIÓN CON MONDAY ---
+            if self.mode == "prestamo":
+                # Llama a process_checkout con los datos de la GUI
+                success = process_checkout(
+                    INVENTORY_BOARD_ID,
+                    SMALL_BOARD_ID,
+                    scanned_data,  # UID leído del QR o de prueba
+                    self.employee.getEmployeeName(),
+                    f"{self.motivo} {self.empresa}".strip(),
+                    UID_COLUMN_ID,
+                    SERIAL_COLUMN_ID,
+                    PART_COLUMN_ID,
+                    STATUS_COLUMN_ID,
+                    SMALL_BOARD_COLUMN_MAPPING
+                )
+                if success:
+                    print("Registro en Monday.com exitoso.")
+                    self.scanned_data_secondary_label.setText("Registro en Monday.com exitoso.")
+                else:
+                    print("Error al registrar en Monday.com.")
+                    self.scanned_data_secondary_label.setText("Error al registrar en Monday.com.")
+            # Puedes agregar lógica similar para devoluciones si lo necesitas
+            # --------------------------------
+
         except Exception as e:
             self.scanned_data_label.setText(f"Error: {e}")
             self.show_status_image("failure")

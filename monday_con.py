@@ -71,7 +71,7 @@ class Register:
         self._status = value
     
     def __str__(self):
-        return f"ObjectRegister(uid={self._uid}, serial={self._serial}, part={self._part}, person={self._person}, motive={self._motive}, status={self._status})"
+        return f"ObjectRegister(uid={self.uid}, serial={self.serial}, part={self.part}, person={self.person}, motive={self.motive}, status={self.status})"
 
 def query_inventory_board_by_uid(board_id, uid_column_id, uid_value):
     """
@@ -223,13 +223,13 @@ def check_status_not_checked_out(status_text):
     """
     Check if status is NOT checked out
     Returns True if item can be checked out, False otherwise
-    Status labels: "Inventory", "not checked", "checked"
+    Status labels: "Checked Out", "Inventory"
     """
-    return status_text.lower() != "checked"
+    return status_text != "Checked Out"
 
-def update_item_status(board_id, item_id, status_column_id, checked_status_text="checked"):
+def update_item_status(board_id, item_id, status_column_id, checked_status_text="Checked Out"):
     """
-    Update the status column of an existing item to "checked"
+    Update the status column of an existing item to "Checked Out"
     Returns True if successful, False if failed
     """
     status_query = '''
@@ -261,7 +261,7 @@ def update_item_status(board_id, item_id, status_column_id, checked_status_text=
         print("Error updating status:", result['errors'])
         return False
     
-    print("inventory board status updated to 'checked'")
+    print(f"inventory board status updated to '{checked_status_text}'")
     return True
 
 def create_item_small_board(board_id, obj_register, column_mapping):
