@@ -177,14 +177,14 @@ class ScanApp(QMainWindow):
 
     def show_main_menu(self):
         self.mode = None
-        # No limpiar el RFID si ya se escaneó y no se ha presionado salir
+        # Usar clearEmpleado si no hay RFID registrado
         if not self.rfid_set:
-            self.employee.setIDEmpleado("")
+            self.employee.clearEmpleado()
         self.rfid_buffer = ""
         self.clear_layout(self.content_layout)
-        # Mostrar el RFID escaneado arriba a la izquierda si ya hay uno
-        if self.rfid_set and self.employee.getIDEmpleado():
-            self.user_name_label.setText(f"User: {self.employee.getIDEmpleado()}")
+        # Mostrar el nombre si ya hay uno registrado
+        if self.rfid_set and self.employee.getEmployeeName():
+            self.user_name_label.setText(f"User: {self.employee.getEmployeeName()}")
         else:
             self.user_name_label.setText(f"User: _____")
         self.scan_button.setVisible(False)
@@ -225,14 +225,14 @@ class ScanApp(QMainWindow):
 
     def start_prestamo(self):
         self.mode = "prestamo"
-        if self.rfid_set and self.employee.getIDEmpleado():
+        if self.rfid_set and self.employee.getEmployeeName():
             self.show_main_screen()
         else:
             self.show_login_screen("Escanear RFID para préstamo")
 
     def start_devolucion(self):
         self.mode = "devolucion"
-        if self.rfid_set and self.employee.getIDEmpleado():
+        if self.rfid_set and self.employee.getEmployeeName():
             self.show_main_screen()
         else:
             self.show_login_screen("Escanear RFID para devolución")
@@ -260,10 +260,10 @@ class ScanApp(QMainWindow):
     def show_main_screen(self):
         self.clear_layout(self.content_layout)
         if self.mode == "prestamo":
-            self.user_name_label.setText(f"User: {self.employee.getIDEmpleado()} (Préstamo)")
+            self.user_name_label.setText(f"User: {self.employee.getEmployeeName()}")
             main_label = "Escanear QR para préstamo"
         else:
-            self.user_name_label.setText(f"User: {self.employee.getIDEmpleado()} (Devolución)")
+            self.user_name_label.setText(f"User: {self.employee.getEmployeeName()}")
             main_label = "Escanear QR para devolución"
         # Main scan label
         self.scanned_data_label = QLabel(main_label, self)
@@ -291,14 +291,8 @@ class ScanApp(QMainWindow):
     def exit_to_main_menu(self):
         # Salir: regresa a menú principal y reinicia sesión
         self.rfid_set = False
-        self.employee.setIDEmpleado("")
+        self.employee.clearEmpleado()
         self.show_main_menu()
-
-    def clear_layout(self, layout):
-        while layout.count():
-            child = layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
 
     def eventFilter(self, obj, event):
         # 1. En Main menu, si escanean RFID, va directo a préstamo y el dato prevalece
@@ -309,12 +303,15 @@ class ScanApp(QMainWindow):
                     self.rfid_buffer += key
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     rfid = self.rfid_buffer.strip()
-                    if rfid:
-                        self.employee.setIDEmpleado(rfid)
+                    # Solo permite escanear un RFID si aún no hay uno registrado
+                    if rfid and not self.rfid_set and not self.employee.getIDEmpleado():
+                        self.employee.setEmpleadoByRFID(rfid)
                         self.rfid_set = True
                         self.rfid_buffer = ""
                         self.mode = "prestamo"
                         self.show_main_screen()
+                    # Si ya hay RFID registrado, ignora el nuevo escaneo
+                    self.rfid_buffer = ""
                     return True
             return super().eventFilter(obj, event)
         # 2. Si ya se escaneó RFID, no volver a pedirlo al cambiar de modo
@@ -326,7 +323,7 @@ class ScanApp(QMainWindow):
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     rfid = self.rfid_buffer.strip()
                     if rfid:
-                        self.employee.setIDEmpleado(rfid)
+                        self.employee.setEmpleadoByRFID(rfid)
                         self.rfid_set = True
                         self.rfid_buffer = ""
                         self.show_main_screen()
@@ -334,6 +331,12 @@ class ScanApp(QMainWindow):
             return super().eventFilter(obj, event)
         else:
             return super().eventFilter(obj, event)
+
+    def clear_layout(self, layout):
+        while layout.count():
+            child = layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
 
     def perform_scan(self):
         try:
@@ -343,7 +346,7 @@ class ScanApp(QMainWindow):
                 self.scanned_data_secondary_label.setText(f"{scanned_data}")
                 self.show_status_image("success")
                 current_datetime = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
-                print(f"{self.employee.getIDEmpleado()} - {scanned_data} - {current_datetime} - {self.mode}")
+                print(f"{self.employee.getEmployeeName()} - {scanned_data} - {current_datetime} - {self.mode}")
             else:
                 self.scanned_data_label.setText("No barcode detected.")
                 self.scanned_data_secondary_label.setText("")
