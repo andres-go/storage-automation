@@ -18,10 +18,10 @@ SERIAL_COLUMN_ID = "text_mkrabj2m"
 PART_COLUMN_ID = "text_mkra6xgc"
 STATUS_COLUMN_ID = "color_mkrdamvf"
 CHECKED_BOARD_COLUMN_MAPPING = {
-    'serial': 'serial_column_id_en_board_pequeño',
-    'part': 'part_column_id_en_board_pequeño',
-    'person': 'person_column_id_en_board_pequeño',
-    'motive': 'motive_column_id_en_board_pequeño'
+    'serial': 'text_mkv6yqsc',
+    'part': 'text_mkv6k92e',
+    'person': 'text_mkv5g3a2',
+    'motive': 'text_mkv632ex'
 }
 
 #query board based on qrcode, for serial, part and status
