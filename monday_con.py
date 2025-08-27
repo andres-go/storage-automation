@@ -13,7 +13,7 @@ headers = {
 # --- CONFIGURACIÓN GLOBAL DE COLUMNAS Y BOARDS ---
 INVENTORY_BOARD_ID = "9233233911"
 CHECKED_BOARD_ID = "9900506946"
-UID_COLUMN_ID = "text_mkrabj2m"
+UID_COLUMN_ID = "text_mkv7ygvp"
 SERIAL_COLUMN_ID = "text_mkrabj2m"
 PART_COLUMN_ID = "text_mkra6xgc"
 STATUS_COLUMN_ID = "color_mkrdamvf"
@@ -309,7 +309,7 @@ def create_item_checked_board(board_id, obj_register, column_mapping, person_ove
     }
     '''
 
-    item_name = f"{obj_register._part} - {obj_register._person}" if obj_register._part and obj_register._person else "New Entry"
+    item_name = f"{obj_register._uid} - {obj_register._person}" if obj_register._part and obj_register._person else "New Entry"
 
     create_variables = {
         "board_id": str(board_id),
@@ -369,7 +369,7 @@ if __name__ == "__main__":
     INVENTORY_BOARD_ID = "9233233911" 
     
     # Column IDs for inventory board
-    UID_COLUMN_ID = "text_mkrabj2m"
+    UID_COLUMN_ID = "text_mkv7ygvp"
     SERIAL_COLUMN_ID = "text_mkrabj2m"
     PART_COLUMN_ID = "text_mkra6xgc"
     STATUS_COLUMN_ID = "color_mkrdamvf"

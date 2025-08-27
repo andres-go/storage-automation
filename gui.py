@@ -457,11 +457,11 @@ class ScanApp(QMainWindow):
     def perform_scan(self):
         try:
             scanned_data = read_barcode()
-            if not scanned_data or "ERROR" in scanned_data:
-                scanned_data = "121800074"  # test_uid para pruebas
-                self.scanned_data_label.setText("Usando UID de prueba")
-            else:
-                self.scanned_data_label.setText(f"{scanned_data}")
+            # if not scanned_data or "ERROR" in scanned_data:
+            #     scanned_data = "121800074"  # test_uid para pruebas
+            #     self.scanned_data_label.setText("Usando UID de prueba")
+            # else:
+            self.scanned_data_label.setText(f"{scanned_data}")
             self.scanned_data_secondary_label.setText(f"{scanned_data}")
             self.show_status_image("success")
             current_datetime = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
