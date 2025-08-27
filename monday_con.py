@@ -9,7 +9,20 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# INVENTORY board
+
+# --- CONFIGURACIÓN GLOBAL DE COLUMNAS Y BOARDS ---
+INVENTORY_BOARD_ID = "9233233911"
+CHECKED_BOARD_ID = "9900506946"
+UID_COLUMN_ID = "text_mkrabj2m"
+SERIAL_COLUMN_ID = "text_mkrabj2m"
+PART_COLUMN_ID = "text_mkra6xgc"
+STATUS_COLUMN_ID = "color_mkrdamvf"
+CHECKED_BOARD_COLUMN_MAPPING = {
+    'serial': 'serial_column_id_en_board_pequeño',
+    'part': 'part_column_id_en_board_pequeño',
+    'person': 'person_column_id_en_board_pequeño',
+    'motive': 'motive_column_id_en_board_pequeño'
+}
 
 #query board based on qrcode, for serial, part and status
 #check status = !checked, continue
@@ -19,7 +32,7 @@ headers = {
 #object register
   #insert serial, part, person, motive
 
-#modify small board with object
+#modify checked board with object
 
 
 class Register:
@@ -71,7 +84,7 @@ class Register:
         self._status = value
     
     def __str__(self):
-        return f"ObjectRegister(uid={self.uid}, serial={self.serial}, part={self.part}, person={self.person}, motive={self.motive}, status={self.status})"
+        return f"ObjectRegister(uid={self._uid}, serial={self._serial}, part={self._part}, person={self._person}, motive={self._motive}, status={self._status})"
 
 def query_inventory_board_by_uid(board_id, uid_column_id, uid_value):
     """
@@ -111,10 +124,10 @@ def query_inventory_board_by_uid(board_id, uid_column_id, uid_value):
     response = requests.post(API_URL, json={"query": query, "variables": variables}, headers=headers)
     result = response.json()
     
-    # Debug: Print the full API response
-    print("API Response:")
-    print(json.dumps(result, indent=2))
-    print("-" * 30)
+    # # Debug: Print the full API response
+    # print("API Response:")
+    # print(json.dumps(result, indent=2))
+    # print("-" * 30)
     
     if 'errors' in result:
         print("Error querying inventory board:", result['errors'])
@@ -208,30 +221,23 @@ def extract_item_data(item_data, serial_column_id, part_column_id, status_column
     Returns Register with extracted data
     """
     obj_register = Register()
-    
+
     for column in item_data['column_values']:
         if column['id'] == serial_column_id:
-            obj_register.serial = column['text']
+            obj_register.set_serial(column['text'])
         elif column['id'] == part_column_id:
-            obj_register.part = column['text']
+            obj_register.set_part(column['text'])
         elif column['id'] == status_column_id:
-            obj_register.status = column['text']
-    
+            obj_register.set_status(column['text'])
+
     return obj_register
 
 def check_status_not_checked_out(status_text):
-    """
-    Check if status is NOT checked out
-    Returns True if item can be checked out, False otherwise
-    Status labels: "Inventory", "not checked", "checked"
-    """
-    return status_text.lower() != "checked"
 
-def update_item_status(board_id, item_id, status_column_id, checked_status_text="checked"):
-    """
-    Update the status column of an existing item to "checked"
-    Returns True if successful, False if failed
-    """
+    return status_text != "Checked Out"
+
+def update_item_status(board_id, item_id, status_column_id, checked_status_text="Checked Out"):
+
     status_query = '''
     mutation ($board_id: ID!, $item_id: ID!, $column_id: String!, $value: JSON!) {
       change_column_value (
@@ -246,7 +252,6 @@ def update_item_status(board_id, item_id, status_column_id, checked_status_text=
     }
     '''
     
-    # For status columns with text labels, use the label text directly
     status_variables = {
         "board_id": str(board_id),
         "item_id": str(item_id),
@@ -260,13 +265,12 @@ def update_item_status(board_id, item_id, status_column_id, checked_status_text=
     if 'errors' in result:
         print("Error updating status:", result['errors'])
         return False
-    
-    print("inventory board status updated to 'checked'")
+
+    print("inventory board status updated to 'Checked Out'")
     return True
 
-def create_item_small_board(board_id, obj_register, column_mapping):
+def create_item_checked_board(board_id, obj_register, column_mapping, person_override=None, motive_override=None):
     """
-    Create item in small board with object register data
     column_mapping should be a dict like:
     {
         'serial': 'serial_column_id',
@@ -277,15 +281,21 @@ def create_item_small_board(board_id, obj_register, column_mapping):
     """
     column_values = {}
     
-    if obj_register.serial and 'serial' in column_mapping:
-        column_values[column_mapping['serial']] = obj_register.serial
-    if obj_register.part and 'part' in column_mapping:
-        column_values[column_mapping['part']] = obj_register.part
-    if obj_register.person and 'person' in column_mapping:
-        column_values[column_mapping['person']] = obj_register.person
-    if obj_register.motive and 'motive' in column_mapping:
-        column_values[column_mapping['motive']] = obj_register.motive
-    
+    if obj_register._serial and 'serial' in column_mapping:
+        column_values[column_mapping['serial']] = obj_register._serial
+    if obj_register._part and 'part' in column_mapping:
+        column_values[column_mapping['part']] = obj_register._part
+    if 'person' in column_mapping:
+        if person_override is not None:
+            column_values[column_mapping['person']] = person_override
+        elif obj_register._person:
+            column_values[column_mapping['person']] = obj_register._person
+    if 'motive' in column_mapping:
+        if motive_override is not None:
+            column_values[column_mapping['motive']] = motive_override
+        elif obj_register._motive:
+            column_values[column_mapping['motive']] = obj_register._motive
+
     create_query = '''
     mutation ($board_id: ID!, $item_name: String!, $column_values: JSON!) {
       create_item (
@@ -298,9 +308,9 @@ def create_item_small_board(board_id, obj_register, column_mapping):
       }
     }
     '''
-    
-    item_name = f"{obj_register.part} - {obj_register.person}" if obj_register.part and obj_register.person else "New Entry"
-    
+
+    item_name = f"{obj_register._part} - {obj_register._person}" if obj_register._part and obj_register._person else "New Entry"
+
     create_variables = {
         "board_id": str(board_id),
         "item_name": item_name,
@@ -311,25 +321,20 @@ def create_item_small_board(board_id, obj_register, column_mapping):
     result = response.json()
     
     if 'errors' in result:
-        print("Error creating item in small board:", result['errors'])
+        print("Error creating item in checked board:", result['errors'])
         return None
     
     item_id = result['data']['create_item']['id']
-    print(f"Item created in small board with ID: {item_id}")
+    print(f"Item created in checked board with ID: {item_id}")
     return item_id
 
-def process_checkout(inventory_board_id, small_board_id, uid_value, person, motive, 
+def process_checkout(inventory_board_id, checked_board_id, uid_value, person, motive, 
                     uid_column_id, serial_column_id, part_column_id, status_column_id,
-                    small_board_column_mapping):
-    """
-    Main function that orchestrates the entire checkout process
-    """
+                    checked_board_column_mapping):
     print(f"Starting checkout process for UID: {uid_value}")
     
-    # Step 1: Query inventory board based on UID
     item_data = query_inventory_board_by_uid(inventory_board_id, uid_column_id, uid_value)
     
-    # If the first method fails, try fallback
     if not item_data:
         print("Trying fallback query method...")
         item_data = query_inventory_board_by_uid_fallback(inventory_board_id, uid_column_id, uid_value)
@@ -337,44 +342,39 @@ def process_checkout(inventory_board_id, small_board_id, uid_value, person, moti
     if not item_data:
         return False
     
-    # Step 2: Extract serial, part, and status
     obj_register = extract_item_data(item_data, serial_column_id, part_column_id, status_column_id)
-    obj_register.uid = uid_value
-    obj_register.person = person
-    obj_register.motive = motive
+    obj_register.set_uid(uid_value)
+    obj_register.set_person(person)
+    obj_register.set_motive(motive)
     
     print(f"Found item: {obj_register}")
     
-    # Step 3: Check if status != checked
-    if not check_status_not_checked_out(obj_register.status):
-        print(f"Item is already checked out (status: {obj_register.status})")
+    if not check_status_not_checked_out(obj_register.get_status()):
+        print(f"Item is already Checked Out (status: {obj_register.get_status()})")
         return False
-    
-    # Step 4: Modify inventory board status to 'checked'
+
     if not update_item_status(inventory_board_id, item_data['item_id'], status_column_id):
         return False
     
-    # Step 5: Create item in small board
-    small_board_item_id = create_item_small_board(small_board_id, obj_register, small_board_column_mapping)
+    checked_board_item_id = create_item_checked_board(checked_board_id, obj_register, checked_board_column_mapping, person_override=person, motive_override=motive)
     
-    if small_board_item_id:
+    if checked_board_item_id:
         print("Checkout process completed successfully!")
         return True
     else:
-        print("Failed to create item in small board")
+        print("Failed to create item in checked board")
         return False
 
-# Test case - Only query inventory board and create object
 if __name__ == "__main__":
     INVENTORY_BOARD_ID = "9233233911" 
     
     # Column IDs for inventory board
-    UID_COLUMN_ID = "text_mkrabj2m" #currently serial CHANGE
+    UID_COLUMN_ID = "text_mkrabj2m"
     SERIAL_COLUMN_ID = "text_mkrabj2m"
     PART_COLUMN_ID = "text_mkra6xgc"
     STATUS_COLUMN_ID = "color_mkrdamvf"
     
-    # Test values
+    # Test values (ya no se usan en producción, solo para pruebas manuales)
     test_uid = "121800074"
     test_person = "ivanovich"
     test_motive = "Demo"
@@ -382,11 +382,9 @@ if __name__ == "__main__":
     print(f"Testing inventory board query and object creation for UID: {test_uid}")
     print("=" * 50)
     
-    # Step 1: Query inventory board based on UID
     print("Step 1: Querying inventory board...")
     item_data = query_inventory_board_by_uid(INVENTORY_BOARD_ID, UID_COLUMN_ID, test_uid)
     
-    # If the first method fails, try fallback
     if not item_data:
         print("Trying fallback query method...")
         item_data = query_inventory_board_by_uid_fallback(INVENTORY_BOARD_ID, UID_COLUMN_ID, test_uid)
@@ -397,30 +395,49 @@ if __name__ == "__main__":
         print("Item found!")
         print(f"Item ID: {item_data['item_id']}")
         print(f"Item Name: {item_data['item_name']}")
-        
-        # Step 2: Extract data and create Register object
+
         print("\nStep 2: Creating Register object...")
         obj_register = extract_item_data(item_data, SERIAL_COLUMN_ID, PART_COLUMN_ID, STATUS_COLUMN_ID)
-        obj_register.uid = test_uid
-        obj_register.person = test_person
-        obj_register.motive = test_motive
-        
+        obj_register.set_uid(test_uid)
+        obj_register.set_person(test_person)
+        obj_register.set_motive(test_motive)
+
         print("Register object created successfully!")
         print(f"Register object: {obj_register}")
-        
-        # Step 3: Check status
+
         print(f"\nStep 3: Checking status...")
-        print(f"Current status: '{obj_register.status}'")
-        can_checkout = check_status_not_checked_out(obj_register.status)
+        print(f"Current status: '{obj_register.get_status()}'")
+        can_checkout = check_status_not_checked_out(obj_register.get_status())
         if can_checkout:
-            print("Item can be checked out (status is not 'checked')")
+            print("Item can be Checked Out (status is not 'Checked Out')")
+
+            print("\nStep 4: Changing status to 'Checked Out' in Inventory board...")
+            updated = update_item_status(INVENTORY_BOARD_ID, item_data['item_id'], STATUS_COLUMN_ID)
+            if updated:
+                print("Status updated to 'Checked Out' successfully!")
+
+                print("\nStep 5: Adding data to checked board...")
+                CHECKED_BOARD_ID = "9900506946"
+                CHECKED_BOARD_COLUMN_MAPPING = {
+                    'serial': 'text_mkv6yqsc', 
+                    'part': 'text_mkv6k92e',
+                    'person': 'text_mkv5g3a2',
+                    'motive': 'text_mkv632ex'
+                }
+                checked_board_item_id = create_item_checked_board(CHECKED_BOARD_ID, obj_register, CHECKED_BOARD_COLUMN_MAPPING)
+                if checked_board_item_id:
+                    print(f"Item added to checked board with ID: {checked_board_item_id}")
+                else:
+                    print("Failed to add item to checked board.")
+            else:
+                print("Failed to update status.")
         else:
-            print("Item cannot be checked out (status is 'checked')")
-        
-        # Step 4: Test status-only query
-        print(f"\nStep 4: Testing status-only query...")
+            print("Item cannot be Checked Out (status is 'checked')")
+
+        # Step 5: Test status-only query
+        print(f"\nStep 5: Testing status-only query...")
         status_only = get_item_status_by_uid(INVENTORY_BOARD_ID, UID_COLUMN_ID, test_uid, STATUS_COLUMN_ID)
         print(f"Status from dedicated function: '{status_only}'")
-        
+
         print("\n" + "=" * 50)
         print("Test completed!")
