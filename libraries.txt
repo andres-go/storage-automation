@@ -2,3 +2,4 @@ Supabase - Databse
 PyQT5 - GUI
 pip - Install
 python-dotenv - Access environment variables
+pyserial
