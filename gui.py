@@ -141,7 +141,6 @@ class ScanApp(QMainWindow):
             self.result_image.setPixmap(QPixmap("imgs/scan.png").scaled(100, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
     def reset_workflow(self):
-        # Eliminar layout de motivos si existe
         if hasattr(self, 'motivos_layout') and self.motivos_layout is not None:
             for i in reversed(range(self.motivos_layout.count())):
                 col = self.motivos_layout.itemAt(i)
