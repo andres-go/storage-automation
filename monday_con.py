@@ -1,11 +1,23 @@
 import requests
 import datetime
 import json
+import os
 
 API_URL = "https://api.monday.com/v2"
 
+# Leer la clave de Authorization desde MondayKey.txt
+def get_monday_key():
+    key_path = os.path.join(os.path.dirname(__file__), 'UPDATE/MondayKey.txt')
+    try:
+        with open(key_path, 'r', encoding='utf-8') as f:
+            key = f.read().strip().strip('"')
+            return key
+    except Exception as e:
+        print(f"Error loading MondayKey.txt: {e}")
+        return ""
+
 headers = {
-    "Authorization": "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjU1NDA3NDAxNywiYWFpIjoxMSwidWlkIjo3NDgwODgyOCwiaWFkIjoiMjAyNS0wOC0yNVQxNDoyMTo1MS4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6OTExMTQ5MCwicmduIjoidXNlMSJ9.thTm9sSH1hy_a5MPKa6BDhAbTGqDxbtMz71w3cwtqSI",
+    "Authorization": get_monday_key(),
     "Content-Type": "application/json"
 }
 

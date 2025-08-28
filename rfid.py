@@ -11,12 +11,25 @@ class Employee:
     
     def setEmployeeName(self, employeeName):
         self.employeeName = employeeName
- 
-    # Dictionary  
-    employeeDB = {
-        "db9036ab": "Ivanovich Chiu",
-        "de125fcb": "Andres Gonzalez"
-    }
+    
+
+    # Cargar employeeDB desde un archivo externo employeeDB.txt
+    @staticmethod
+    def load_employee_db():
+        import os
+        db_path = os.path.join(os.path.dirname(__file__), 'UPDATE/employeeDB.txt')
+        try:
+            with open(db_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                # Evalúa el contenido como un diccionario
+                db = eval(content, {"__builtins__": {}})
+                if isinstance(db, dict):
+                    return db
+        except Exception as e:
+            print(f"Error loading employeeDB.txt: {e}")
+        return {}
+
+    employeeDB = load_employee_db.__func__()
 
     def setEmployeeNameByID(self, idEmpleado):
         self.setEmployeeName(self.employeeDB.get(idEmpleado, "Unknown Employee"))
