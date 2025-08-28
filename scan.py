@@ -14,8 +14,10 @@ def find_dataman_port():
     ports = serial.tools.list_ports.comports()
 
     for port in ports:
+        '''IMPORTANT'''
+        # IF USING RASPBERRY PI CHANGE FROM DataMan to DM150
         if "DataMan" in port.description:
-            # print(f"Found DataMan device at {port.device}")
+            # print(f"Found DM150 device at {port.device}")
 
             return port.device
     print("ERROR : DataMan device not found.")

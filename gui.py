@@ -24,7 +24,7 @@ class ScanApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("KUROBI Automation")
-        self.setFixedSize(800, 400)
+        self.setFixedSize(800, 413)
         self.employee = Employee()
         self.rfid_buffer = ""
         self.rfid_set = False
