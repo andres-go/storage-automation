@@ -7,6 +7,8 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QTimer
 
+from monday_con import get_item_status_by_uid
+from monday_con import process_checkout
 from scan import read_barcode
 from rfid import Employee
 from monday_con import (
@@ -273,13 +275,22 @@ class ScanApp(QMainWindow):
     def eventFilter(self, obj, event):
         if self.mode is None:
             if event.type() == event.KeyPress:
-                key = event.text()
+                key = event.text().lower()
                 if key.isprintable():
                     self.rfid_buffer += key
                 if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                     rfid = self.rfid_buffer.strip()
                     if rfid and not self.rfid_set and not self.employee.getIDEmpleado():
                         self.employee.setEmpleadoByRFID(rfid)
+                        if self.employee.getEmployeeName() == "Unknown Employee":
+                            self.reset_workflow()
+                            self.result_message.setText("Unknown employee")
+                            self.result_message.setStyleSheet("font-size: 22px; color: #c62828; font-weight: bold;")
+                            self.show_status_image("failure")
+                            self.rfid_buffer = ""
+
+                            QTimer.singleShot(3000, self.reset_workflow)
+                            return True
                         self.rfid_set = True
                         self.rfid_buffer = ""
                         self.mode = "prestamo"
@@ -291,13 +302,21 @@ class ScanApp(QMainWindow):
             return super().eventFilter(obj, event)
 
     def perform_scan(self):
+        # revert to red error message
+        self.result_message.setStyleSheet("color: #c62828; font-size: 22px; font-weight: bold;")
         try:
             self.show_status_image("loading")
-            self.result_message.setText("")  # Limpiar mensaje al mostrar loading
-            QApplication.processEvents()  # Forzar refresco visual
+            self.result_message.setText("") 
+            QApplication.processEvents() 
             scanned_data = read_barcode()
+
+
+            if scanned_data == '' or scanned_data is None or scanned_data.startswith("ERROR"):
+                self.show_status_image("failure")
+                self.result_message.setText("No barcode detected in 5 seconds.")
+                return
+            
             # Validar si el objeto ya está registrado (Checked Out) en Monday.com
-            from monday_con import get_item_status_by_uid
             status = get_item_status_by_uid(
                 INVENTORY_BOARD_ID,
                 UID_COLUMN_ID,
@@ -312,10 +331,10 @@ class ScanApp(QMainWindow):
                 self.show_status_image("failure")
                 self.result_message.setText("El ítem ya está registrado (Checked Out) en Monday.com.")
                 return
+
             self.result_message.setText(scanned_data)
             if self.mode == "prestamo":
                 motivo_completo = self.motivo
-                from monday_con import process_checkout
                 success = process_checkout(
                     INVENTORY_BOARD_ID,
                     CHECKED_BOARD_ID,
@@ -329,6 +348,7 @@ class ScanApp(QMainWindow):
                     CHECKED_BOARD_COLUMN_MAPPING
                 )
                 if success:
+                    self.result_message.setStyleSheet("color: #0d6324; font-size: 22px; font-weight: bold;")
                     self.show_status_image("success")
                     self.result_message.setText("Registro en Monday.com exitoso.")
                 else:

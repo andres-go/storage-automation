@@ -1,3 +1,5 @@
+import os
+
 class Employee:
     def __init__(self):
         self.idEmpleado = ""
@@ -16,7 +18,7 @@ class Employee:
     # Cargar employeeDB desde un archivo externo employeeDB.txt
     @staticmethod
     def load_employee_db():
-        import os
+
         db_path = os.path.join(os.path.dirname(__file__), 'UPDATE/employeeDB.txt')
         try:
             with open(db_path, 'r', encoding='utf-8') as f:
